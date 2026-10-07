@@ -8,7 +8,7 @@ import type { SkillScores } from './types';
 import { ARCHETYPE_ICONS } from './icons';
 import { renderRadar } from './radar';
 import {
-  loadProfile, loadLocalProjects, saveLocalProject,
+  loadProfile,
   type CardStatus, type CourseRecord, type ProjectRecord, type StudentProfile,
 } from './data';
 import { archetypeCard } from './archetypeCard';
@@ -107,7 +107,6 @@ const I_LINE = '<path d="M3 12h18"/>';
 const I_CLOCK = '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>';
 const I_LOCK = '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>';
 const I_FOLDER = '<path d="M4 6.5A1.5 1.5 0 0 1 5.5 5H10l2 2h6.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/>';
-const I_PLUS = '<path d="M12 5v14M5 12h14"/>';
 
 // --- Переключатель статуса (предпросмотр) ---
 
@@ -406,74 +405,9 @@ function renderProject(pr: ProjectRecord): HTMLElement {
   return li;
 }
 
-/** Поле выбора картинки для превью. */
-function fileField(id: string, label: string): HTMLElement {
-  const wrap = el('div', 'pf-field');
-  const lab = el('label', 'pf-field__label', label);
-  lab.htmlFor = id;
-  const input = el('input', 'pf-input pf-input--file');
-  input.id = id;
-  input.name = id;
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.setAttribute('aria-describedby', `${id}-error`);
-  const err = el('p', 'pf-field__error');
-  err.id = `${id}-error`;
-  err.setAttribute('aria-live', 'polite');
-  wrap.append(lab, input, err);
-  return wrap;
-}
-
-/** Уменьшает картинку до 800 px по ширине и отдаёт data URL (JPEG), чтобы превью поместилось в хранилище. */
-function readPreview(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) { reject(new Error('not-image')); return; }
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const MAX = 800;
-      const scale = Math.min(1, MAX / img.naturalWidth);
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.naturalWidth * scale);
-      canvas.height = Math.round(img.naturalHeight * scale);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { reject(new Error('canvas')); return; }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };
-    img.src = url;
-  });
-}
-
-function field(id: string, label: string, type: 'text' | 'url', placeholder: string): HTMLElement {
-  const wrap = el('div', 'pf-field');
-  const lab = el('label', 'pf-field__label', label);
-  lab.htmlFor = id;
-  const input = el('input', 'pf-input');
-  input.id = id;
-  input.name = id;
-  input.type = type;
-  input.placeholder = placeholder;
-  input.autocomplete = 'off';
-  input.setAttribute('aria-describedby', `${id}-error`);
-  const err = el('p', 'pf-field__error');
-  err.id = `${id}-error`;
-  err.setAttribute('aria-live', 'polite');
-  wrap.append(lab, input, err);
-  return wrap;
-}
-
-function setFieldError(wrap: HTMLElement, message: string): void {
-  wrap.classList.toggle('pf-field--error', message !== '');
-  wrap.querySelector('.pf-field__error')!.textContent = message;
-}
-
-function renderProjects(p: StudentProfile, onSaved: () => void): HTMLElement {
+function renderProjects(p: StudentProfile): HTMLElement {
   const sec = el('section', 'pf-section');
-  const projects = [...p.projects, ...loadLocalProjects(p.card)]
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const projects = [...p.projects].sort((a, b) => b.date.localeCompare(a.date));
 
   const head = el('div', 'pf-section__head');
   head.appendChild(el('h2', 'pf-h2', 'Мои проекты'));
@@ -483,91 +417,12 @@ function renderProjects(p: StudentProfile, onSaved: () => void): HTMLElement {
   sec.appendChild(head);
 
   if (projects.length === 0) {
-    sec.appendChild(el('p', 'pf-text pf-text--soft', 'Проектов пока нет. Добавьте первый по ссылке на Scratch, GitHub или видео.'));
-  } else {
-    const list = el('ul', 'pf-projects');
-    for (const pr of projects) list.appendChild(renderProject(pr));
-    sec.appendChild(list);
+    sec.appendChild(el('p', 'pf-text pf-text--soft', 'Проектов пока нет. Они появятся после первого занятия.'));
+    return sec;
   }
-
-  // Одно действие на экране: «Добавить проект». Пока форма открыта, кнопка скрыта.
-  const addBtn = el('button', 'pf-action');
-  addBtn.type = 'button';
-  addBtn.innerHTML = `${icon(I_PLUS)}Добавить проект`;
-  sec.appendChild(addBtn);
-
-  const form = el('form', 'pf-form');
-  form.hidden = true;
-  form.noValidate = true;
-  form.setAttribute('aria-label', 'Новый проект');
-  const titleField = field('project-title', 'Название', 'text', 'Например, Лабиринт для кота');
-  const urlField = field('project-url', 'Ссылка на проект', 'url', 'https://scratch.mit.edu/projects/…');
-  const previewField = fileField('project-preview', 'Превью: скриншот или фото проекта');
-  const actions = el('div', 'pf-form__actions');
-  const save = el('button', 'pf-action', 'Сохранить');
-  save.type = 'submit';
-  const cancel = el('button', 'pf-action pf-action--secondary', 'Отмена');
-  cancel.type = 'button';
-  actions.append(save, cancel);
-  form.append(titleField, urlField, previewField, actions);
-  sec.appendChild(form);
-
-  const openForm = (): void => {
-    addBtn.hidden = true;
-    form.hidden = false;
-    titleField.querySelector('input')!.focus();
-  };
-  const closeForm = (): void => {
-    form.hidden = true;
-    addBtn.hidden = false;
-    form.reset();
-    setFieldError(titleField, '');
-    setFieldError(urlField, '');
-    setFieldError(previewField, '');
-    addBtn.focus();
-  };
-  addBtn.addEventListener('click', openForm);
-  cancel.addEventListener('click', closeForm);
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    void (async () => {
-      const title = titleField.querySelector('input')!.value.trim();
-      const url = urlField.querySelector('input')!.value.trim();
-      const file = previewField.querySelector('input')!.files?.[0];
-      let ok = true;
-      if (!title) { setFieldError(titleField, 'Введите название проекта.'); ok = false; }
-      else setFieldError(titleField, '');
-      if (!/^https?:\/\/\S+$/.test(url)) { setFieldError(urlField, 'Нужна ссылка, которая начинается с https://'); ok = false; }
-      else setFieldError(urlField, '');
-
-      let preview: string | undefined;
-      if (file) {
-        save.disabled = true;
-        try {
-          preview = await readPreview(file);
-          setFieldError(previewField, '');
-        } catch {
-          setFieldError(previewField, 'Не удалось прочитать картинку. Нужен PNG или JPG.');
-          ok = false;
-        } finally {
-          save.disabled = false;
-        }
-      } else {
-        setFieldError(previewField, '');
-      }
-      if (!ok) return;
-
-      saveLocalProject(p.card, {
-        id: `local-${Date.now()}`,
-        title,
-        url,
-        date: new Date().toISOString().slice(0, 10),
-        preview,
-      });
-      onSaved();
-    })();
-  });
-
+  const list = el('ul', 'pf-projects');
+  for (const pr of projects) list.appendChild(renderProject(pr));
+  sec.appendChild(list);
   return sec;
 }
 
@@ -594,7 +449,7 @@ function renderProfile(p: StudentProfile, status: CardStatus): void {
     col.appendChild(renderArchetype(p));
     col.appendChild(renderSkills(p.skills, p.baseline));
     col.appendChild(renderCourses(p));
-    col.appendChild(renderProjects(p, () => renderProfile(p, status)));
+    col.appendChild(renderProjects(p));
   }
   main.appendChild(col);
   app.appendChild(main);

@@ -416,38 +416,6 @@ h1, h2 { margin: 0; text-wrap: balance; font-weight: var(--font-weight-bold); }
 }
 .pf-project__open svg { inline-size: var(--size-5); block-size: var(--size-5); }
 [dir="rtl"] .pf-project__open svg { transform: scaleX(-1); }
-.pf-action--secondary { background: var(--color-action-soft); color: var(--color-action); }
-.pf-action svg { inline-size: var(--size-5); block-size: var(--size-5); margin-inline-end: var(--s1); }
-.pf-section > .pf-action { align-self: flex-start; }
-
-/* Форма добавления проекта: поле — surface-inset с рамкой line-strong, ошибка рядом с полем (rules.md, п. 8) */
-.pf-form { display: flex; flex-direction: column; gap: var(--s4); }
-.pf-field { display: flex; flex-direction: column; gap: var(--s1); }
-.pf-field__label { font-weight: var(--font-weight-semibold); }
-.pf-input {
-  min-block-size: var(--control);
-  padding-inline: var(--s3);
-  border: 1px solid var(--color-line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-inset);
-  color: var(--color-ink);
-  font: inherit; font-size: var(--text-base);
-}
-.pf-input::placeholder { color: var(--color-ink-soft); }
-.pf-input--file { padding-block: var(--s2); }
-.pf-input--file::file-selector-button {
-  font: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-semibold);
-  color: var(--color-action); background: var(--color-action-soft);
-  border: 0; border-radius: var(--radius-xs);
-  padding: var(--s1) var(--s2); margin-inline-end: var(--s2);
-}
-[data-theme="dark"] .pf-input { background: var(--color-surface); }
-.pf-field--error .pf-input { border-color: var(--color-error-ink); }
-.pf-field__error { color: var(--color-error-ink); font-size: var(--text-sm); line-height: var(--text-sm--line-height); }
-.pf-field__error:empty { display: none; }
-.pf-form__actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
-.pf-form[hidden] { display: none; }
-
 /* --- Фокус: 2 px focus с отступом 2 px; на brand двойное кольцо (tokens.md) --- */
 :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .pf-header :focus-visible {

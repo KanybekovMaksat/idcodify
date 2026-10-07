@@ -23,7 +23,7 @@ export interface ProjectRecord {
   /** Дата добавления, ISO. */
   date: string;
   url: string;
-  /** Превью: адрес картинки или data URL (для добавленных на устройстве). */
+  /** Адрес картинки-превью. */
   preview?: string;
 }
 
@@ -61,7 +61,7 @@ export interface StudentProfile {
   /** До какой даты карта активна после диагностики (ISO). */
   cardValidUntil?: string;
   courses: CourseRecord[];
-  /** Проекты с сервера. Добавленные на устройстве хранятся отдельно, см. loadLocalProjects. */
+  /** Проекты студента: добавляет школа через LMS. */
   projects: ProjectRecord[];
 }
 
@@ -136,28 +136,3 @@ export async function loadProfile(card: string | null): Promise<StudentProfile |
   return { ...DEMO };
 }
 
-// --- Проекты, добавленные на устройстве. Пока нет API, они живут в localStorage
-// этого браузера. Когда появится сервер, saveLocalProject заменится на запрос.
-
-function localKey(card: string): string {
-  return `idcodify.projects.${card}`;
-}
-
-export function loadLocalProjects(card: string): ProjectRecord[] {
-  try {
-    const raw = localStorage.getItem(localKey(card));
-    return raw ? (JSON.parse(raw) as ProjectRecord[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveLocalProject(card: string, project: ProjectRecord): void {
-  try {
-    const list = loadLocalProjects(card);
-    list.push(project);
-    localStorage.setItem(localKey(card), JSON.stringify(list));
-  } catch {
-    // Хранилище недоступно (приватный режим): проект покажется до перезагрузки.
-  }
-}
