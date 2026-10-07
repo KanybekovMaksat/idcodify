@@ -1,0 +1,91 @@
+// src/profile/data.ts
+// Данные цифрового профиля студента. Профиль открывается по номеру карты
+// (?card=ABC123) — сама карта хранит только ссылку, данные живут на сервере.
+// Пока бэкенда нет, loadProfile отдаёт демо-профиль для любого номера.
+
+import type { SkillScores } from './types';
+import type { Gender } from './archetypeCard';
+
+/** Пройденный или текущий курс с цифровым сертификатом. */
+export interface CourseRecord {
+  id: string;
+  title: string;
+  /** Период обучения, ISO-даты. `to` пустой, пока курс идёт. */
+  from: string;
+  to?: string;
+  /** Номер сертификата. Есть только у завершённых курсов. */
+  certificate?: {
+    number: string;
+    issued: string; // ISO-дата выдачи
+    /** Ссылка на проверку подлинности. */
+    verifyUrl: string;
+  };
+}
+
+export interface StudentProfile {
+  /** Номер карты, по которому открыт профиль. */
+  card: string;
+  fullName: string;
+  /** Имя в именительном падеже — для текста карты. */
+  firstName: string;
+  /** Род — для согласования слов в тексте карты. */
+  gender: Gender;
+  /** id архетипа из tests-data/archetypes (sage, creator, …). */
+  archetype: string;
+  /** Навыки сейчас. */
+  skills: SkillScores;
+  /** Навыки на первой диагностике — чтобы показать рост. */
+  baseline?: { date: string; skills: SkillScores };
+  courses: CourseRecord[];
+}
+
+const DEMO: StudentProfile = {
+  card: '000417',
+  fullName: 'Асанова Айдана Бакытовна',
+  firstName: 'Айдана',
+  gender: 'f',
+  archetype: 'creator',
+  baseline: {
+    date: '2026-01-14',
+    skills: { analytics: 41, logic: 46, creativity: 68, communication: 52, initiative: 58 },
+  },
+  skills: { analytics: 63, logic: 71, creativity: 84, communication: 66, initiative: 74 },
+  courses: [
+    {
+      id: 'scratch-start',
+      title: 'Scratch Start',
+      from: '2026-01-19',
+      to: '2026-04-10',
+      certificate: {
+        number: 'CDF-2026-00412',
+        issued: '2026-04-12',
+        verifyUrl: 'https://codifylab.com/verify/CDF-2026-00412',
+      },
+    },
+    {
+      id: 'robo-start',
+      title: 'Robo Start',
+      from: '2026-04-20',
+      to: '2026-07-03',
+      certificate: {
+        number: 'CDF-2026-00987',
+        issued: '2026-07-05',
+        verifyUrl: 'https://codifylab.com/verify/CDF-2026-00987',
+      },
+    },
+    {
+      id: 'python-junior',
+      title: 'Python Junior',
+      from: '2026-09-07',
+    },
+  ],
+};
+
+/**
+ * Загружает профиль по номеру карты. Сейчас — демо-данные.
+ * Когда появится API, здесь будет fetch(`/api/profile?card=${card}`).
+ */
+export async function loadProfile(card: string | null): Promise<StudentProfile | null> {
+  if (!card) return null;
+  return { ...DEMO };
+}
