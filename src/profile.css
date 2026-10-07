@@ -320,19 +320,21 @@ h1, h2 { margin: 0; text-wrap: balance; font-weight: var(--font-weight-bold); }
 .pf-statusbar .pf-col { display: flex; flex-direction: column; gap: var(--s1); padding-block: var(--s2); }
 .pf-segment { display: flex; flex-wrap: wrap; gap: var(--s2); }
 .pf-segment__btn {
-  min-block-size: var(--control);
+  position: relative;
+  min-block-size: calc(var(--spacing) * 9);
   padding-inline: var(--s3);
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-ink);
-  font: inherit; font-weight: var(--font-weight-semibold);
+  font: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-semibold);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition-property: transform, background-color, border-color, color;
   transition-duration: var(--duration-fast);
   transition-timing-function: var(--ease-out);
 }
+.pf-segment__btn::before { content: ''; position: absolute; inset-inline: 0; inset-block: calc(var(--spacing) * -1.5); }
 .pf-segment__btn:active { transform: scale(0.96); }
 .pf-segment__btn[aria-pressed="true"] {
   background: var(--color-action-soft);
@@ -379,31 +381,38 @@ h1, h2 { margin: 0; text-wrap: balance; font-weight: var(--font-weight-bold); }
 .pf-locked__icon svg { inline-size: var(--size-6); block-size: var(--size-6); }
 [data-theme="dark"] .pf-locked__icon { background: var(--color-surface); }
 
-/* --- Мои проекты --- */
-.pf-projects { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+/* --- Мои проекты: карточки с превью, две в ряд, когда помещаются --- */
+.pf-projects {
+  list-style: none; margin: 0; padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--spacing) * 38), 1fr));
+  gap: var(--s4);
+}
 .pf-project {
-  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
-  padding-block: var(--s3);
-  border-block-start: 1px solid var(--color-line);
+  display: flex; flex-direction: column; gap: var(--s2);
+  color: var(--color-ink); text-decoration: none;
+  border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
+  transition-property: transform;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-out);
 }
-.pf-project:first-child { border-block-start: none; padding-block-start: 0; }
-.pf-project:last-child { padding-block-end: 0; }
-.pf-project__tile {
-  display: grid; place-items: center;
-  inline-size: var(--control); block-size: var(--control);
-  border-radius: var(--radius-md);
-  background: var(--color-action-soft);
-  color: var(--color-action);
+.pf-project:active { transform: scale(0.96); }
+.pf-project__media {
+  display: block; aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm); overflow: hidden;
+  background: var(--color-surface-inset);
+  box-shadow: var(--shadow-image);
 }
-.pf-project__tile svg { inline-size: var(--size-6); block-size: var(--size-6); }
-.pf-project__main { display: flex; flex-direction: column; gap: var(--s1); flex: 1 1 calc(var(--spacing) * 30); min-inline-size: 0; }
+.pf-project__media img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
+.pf-project__media--empty { display: grid; place-items: center; background: var(--color-action-soft); color: var(--color-action); }
+.pf-project__media--empty svg { inline-size: var(--size-6); block-size: var(--size-6); }
+.pf-project__body { display: flex; flex-direction: column; gap: var(--s1); min-inline-size: 0; }
 .pf-project__title { font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
 .pf-project__open {
   display: inline-flex; align-items: center; gap: var(--s1);
-  margin-inline-start: auto;
-  min-block-size: var(--control);
   color: var(--color-action); font-weight: var(--font-weight-semibold);
-  text-decoration: none; white-space: nowrap;
+  white-space: nowrap;
 }
 .pf-project__open svg { inline-size: var(--size-5); block-size: var(--size-5); }
 [dir="rtl"] .pf-project__open svg { transform: scaleX(-1); }
@@ -425,6 +434,13 @@ h1, h2 { margin: 0; text-wrap: balance; font-weight: var(--font-weight-bold); }
   font: inherit; font-size: var(--text-base);
 }
 .pf-input::placeholder { color: var(--color-ink-soft); }
+.pf-input--file { padding-block: var(--s2); }
+.pf-input--file::file-selector-button {
+  font: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-semibold);
+  color: var(--color-action); background: var(--color-action-soft);
+  border: 0; border-radius: var(--radius-xs);
+  padding: var(--s1) var(--s2); margin-inline-end: var(--s2);
+}
 [data-theme="dark"] .pf-input { background: var(--color-surface); }
 .pf-field--error .pf-input { border-color: var(--color-error-ink); }
 .pf-field__error { color: var(--color-error-ink); font-size: var(--text-sm); line-height: var(--text-sm--line-height); }

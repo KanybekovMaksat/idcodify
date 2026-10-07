@@ -23,6 +23,8 @@ export interface ProjectRecord {
   /** Дата добавления, ISO. */
   date: string;
   url: string;
+  /** Превью: адрес картинки или data URL (для добавленных на устройстве). */
+  preview?: string;
 }
 
 /** Пройденный или текущий курс с цифровым сертификатом. */
@@ -112,6 +114,7 @@ const DEMO: StudentProfile = {
       courseTitle: 'Robo Start',
       date: '2026-03-28',
       url: 'https://github.com/codify-students/robo-sorter',
+      preview: '/projects/robo-sorter.svg',
     },
     {
       id: 'homework-bot',
@@ -119,6 +122,7 @@ const DEMO: StudentProfile = {
       courseTitle: 'AI Start',
       date: '2026-06-20',
       url: 'https://github.com/codify-students/homework-bot',
+      preview: '/projects/homework-bot.svg',
     },
   ],
 };

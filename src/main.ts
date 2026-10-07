@@ -37,8 +37,8 @@ const SKILL_META: { key: keyof SkillScores; label: string }[] = [
 
 const STATUSES: CardStatus[] = ['diagnostic', 'locked', 'active'];
 const STATUS_LABEL: Record<CardStatus, string> = {
-  diagnostic: 'После диагностики',
-  locked: 'Карта закрыта',
+  diagnostic: 'Диагностика',
+  locked: 'Закрыта',
   active: 'Студент',
 };
 
@@ -369,27 +369,82 @@ function renderCourses(p: StudentProfile): HTMLElement {
 
 // --- Мои проекты ---
 
+/** Карточка проекта: превью, название, курс и дата. Вся карточка — ссылка на проект. */
 function renderProject(pr: ProjectRecord): HTMLElement {
-  const row = el('li', 'pf-project');
-  const tile = el('div', 'pf-project__tile');
-  tile.innerHTML = icon(I_FOLDER, 1.5);
-  row.appendChild(tile);
+  const li = document.createElement('li');
+  const a = document.createElement('a');
+  a.className = 'pf-project';
+  a.href = pr.url;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.setAttribute('aria-label', `Открыть проект «${pr.title}»`);
 
-  const main = el('div', 'pf-project__main');
-  main.appendChild(el('p', 'pf-project__title', pr.title));
+  const media = el('span', 'pf-project__media');
+  if (pr.preview) {
+    const img = document.createElement('img');
+    img.src = pr.preview;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    media.appendChild(img);
+  } else {
+    media.classList.add('pf-project__media--empty');
+    media.innerHTML = icon(I_FOLDER, 1.5);
+  }
+  a.appendChild(media);
+
+  const body = el('span', 'pf-project__body');
+  body.appendChild(el('span', 'pf-project__title', pr.title));
   const meta = [pr.courseTitle, fmtDate(pr.date)].filter(Boolean).join(' · ');
-  main.appendChild(el('p', 'pf-meta', meta));
-  row.appendChild(main);
-
-  const open = document.createElement('a');
-  open.className = 'pf-project__open';
-  open.href = pr.url;
-  open.target = '_blank';
-  open.rel = 'noopener';
-  open.setAttribute('aria-label', `Открыть проект «${pr.title}»`);
+  body.appendChild(el('span', 'pf-meta', meta));
+  const open = el('span', 'pf-project__open');
   open.innerHTML = `Открыть${icon(I_CHEVRON)}`;
-  row.appendChild(open);
-  return row;
+  body.appendChild(open);
+  a.appendChild(body);
+
+  li.appendChild(a);
+  return li;
+}
+
+/** Поле выбора картинки для превью. */
+function fileField(id: string, label: string): HTMLElement {
+  const wrap = el('div', 'pf-field');
+  const lab = el('label', 'pf-field__label', label);
+  lab.htmlFor = id;
+  const input = el('input', 'pf-input pf-input--file');
+  input.id = id;
+  input.name = id;
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.setAttribute('aria-describedby', `${id}-error`);
+  const err = el('p', 'pf-field__error');
+  err.id = `${id}-error`;
+  err.setAttribute('aria-live', 'polite');
+  wrap.append(lab, input, err);
+  return wrap;
+}
+
+/** Уменьшает картинку до 800 px по ширине и отдаёт data URL (JPEG), чтобы превью поместилось в хранилище. */
+function readPreview(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) { reject(new Error('not-image')); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 800;
+      const scale = Math.min(1, MAX / img.naturalWidth);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('canvas')); return; }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };
+    img.src = url;
+  });
 }
 
 function field(id: string, label: string, type: 'text' | 'url', placeholder: string): HTMLElement {
@@ -447,13 +502,14 @@ function renderProjects(p: StudentProfile, onSaved: () => void): HTMLElement {
   form.setAttribute('aria-label', 'Новый проект');
   const titleField = field('project-title', 'Название', 'text', 'Например, Лабиринт для кота');
   const urlField = field('project-url', 'Ссылка на проект', 'url', 'https://scratch.mit.edu/projects/…');
+  const previewField = fileField('project-preview', 'Превью: скриншот или фото проекта');
   const actions = el('div', 'pf-form__actions');
   const save = el('button', 'pf-action', 'Сохранить');
   save.type = 'submit';
   const cancel = el('button', 'pf-action pf-action--secondary', 'Отмена');
   cancel.type = 'button';
   actions.append(save, cancel);
-  form.append(titleField, urlField, actions);
+  form.append(titleField, urlField, previewField, actions);
   sec.appendChild(form);
 
   const openForm = (): void => {
@@ -467,27 +523,49 @@ function renderProjects(p: StudentProfile, onSaved: () => void): HTMLElement {
     form.reset();
     setFieldError(titleField, '');
     setFieldError(urlField, '');
+    setFieldError(previewField, '');
     addBtn.focus();
   };
   addBtn.addEventListener('click', openForm);
   cancel.addEventListener('click', closeForm);
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const title = titleField.querySelector('input')!.value.trim();
-    const url = urlField.querySelector('input')!.value.trim();
-    let ok = true;
-    if (!title) { setFieldError(titleField, 'Введите название проекта.'); ok = false; }
-    else setFieldError(titleField, '');
-    if (!/^https?:\/\/\S+$/.test(url)) { setFieldError(urlField, 'Нужна ссылка, которая начинается с https://'); ok = false; }
-    else setFieldError(urlField, '');
-    if (!ok) return;
-    saveLocalProject(p.card, {
-      id: `local-${Date.now()}`,
-      title,
-      url,
-      date: new Date().toISOString().slice(0, 10),
-    });
-    onSaved();
+    void (async () => {
+      const title = titleField.querySelector('input')!.value.trim();
+      const url = urlField.querySelector('input')!.value.trim();
+      const file = previewField.querySelector('input')!.files?.[0];
+      let ok = true;
+      if (!title) { setFieldError(titleField, 'Введите название проекта.'); ok = false; }
+      else setFieldError(titleField, '');
+      if (!/^https?:\/\/\S+$/.test(url)) { setFieldError(urlField, 'Нужна ссылка, которая начинается с https://'); ok = false; }
+      else setFieldError(urlField, '');
+
+      let preview: string | undefined;
+      if (file) {
+        save.disabled = true;
+        try {
+          preview = await readPreview(file);
+          setFieldError(previewField, '');
+        } catch {
+          setFieldError(previewField, 'Не удалось прочитать картинку. Нужен PNG или JPG.');
+          ok = false;
+        } finally {
+          save.disabled = false;
+        }
+      } else {
+        setFieldError(previewField, '');
+      }
+      if (!ok) return;
+
+      saveLocalProject(p.card, {
+        id: `local-${Date.now()}`,
+        title,
+        url,
+        date: new Date().toISOString().slice(0, 10),
+        preview,
+      });
+      onSaved();
+    })();
   });
 
   return sec;
