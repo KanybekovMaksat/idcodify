@@ -128,11 +128,11 @@ const DEMO: StudentProfile = {
 };
 
 /**
- * Загружает профиль по номеру карты. Сейчас — демо-данные.
- * Когда появится API, здесь будет fetch(`/api/profile?card=${card}`).
+ * Загружает профиль по номеру карты. Пока нет API, для любой ссылки, в том числе
+ * без номера карты, отдаётся студент из примера. Когда появится сервер, здесь
+ * будет fetch(`/api/profile?card=${card}`), а null вернётся, если карта не найдена.
  */
-export async function loadProfile(card: string | null): Promise<StudentProfile | null> {
-  if (!card) return null;
+export async function loadProfile(_card: string | null): Promise<StudentProfile | null> {
   return { ...DEMO };
 }
 

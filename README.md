@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Открыть http://localhost:5174/?card=000417
+Открыть http://localhost:5174/ — пока нет API, студент из примера показывается по любой ссылке, с номером карты и без.
 
 Предпросмотр статуса карты: добавить `&status=diagnostic`, `&status=locked` или `&status=active`. Переключатель над шапкой делает то же.
 
