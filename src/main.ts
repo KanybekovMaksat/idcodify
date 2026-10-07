@@ -1,19 +1,30 @@
-// src/profile/main.ts
-// Цифровой профиль студента: ФИО, архетип, радар навыков, курсы с сертификатами.
+// src/main.ts
+// ID-карта студента Codify: ФИО, архетип, радар навыков, курсы с сертификатами, проекты.
 // Открывается по ссылке с NFC-карты: /?card=000417
+// Статус карты: ?status=diagnostic|locked|active (предпросмотр), иначе из профиля.
 // Оформление — дизайн-система Codify (codify-app-web/design): токены в tokens.css.
 
 import type { SkillScores } from './types';
 import { ARCHETYPE_ICONS } from './icons';
 import { renderRadar } from './radar';
-import { loadProfile, type CourseRecord, type StudentProfile } from './data';
+import {
+  loadProfile, loadLocalProjects, saveLocalProject,
+  type CardStatus, type CourseRecord, type ProjectRecord, type StudentProfile,
+} from './data';
 import { archetypeCard } from './archetypeCard';
 
 const app = document.querySelector<HTMLElement>('#app')!;
 
+/** Куда ведёт «Записаться на курс». */
+const ENROLL_URL = 'https://codifylab.com';
+
 const MONTHS = [
   'янв', 'фев', 'мар', 'апр', 'мая', 'июн',
   'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+];
+const MONTHS_FULL = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
 ];
 
 const SKILL_META: { key: keyof SkillScores; label: string }[] = [
@@ -24,21 +35,35 @@ const SKILL_META: { key: keyof SkillScores; label: string }[] = [
   { key: 'initiative', label: 'Инициативность' },
 ];
 
+const STATUSES: CardStatus[] = ['diagnostic', 'locked', 'active'];
+const STATUS_LABEL: Record<CardStatus, string> = {
+  diagnostic: 'После диагностики',
+  locked: 'Карта закрыта',
+  active: 'Студент',
+};
+
 /** Тема: всегда светлая (белый фон). Тёмная только по ?theme=dark, например из LMS. */
 function applyTheme(): void {
   const forced = new URLSearchParams(location.search).get('theme');
   document.documentElement.dataset.theme = forced === 'dark' ? 'dark' : 'light';
 }
 
+/** Статус из адреса (предпросмотр), иначе из профиля. */
+function readStatus(p: StudentProfile): CardStatus {
+  const q = new URLSearchParams(location.search).get('status');
+  return STATUSES.includes(q as CardStatus) ? (q as CardStatus) : p.status;
+}
+
+function writeStatus(status: CardStatus): void {
+  const params = new URLSearchParams(location.search);
+  params.set('status', status);
+  history.replaceState(null, '', `${location.pathname}?${params}`);
+}
+
 function fmtDate(iso: string): string {
   const d = new Date(iso);
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
-
-const MONTHS_FULL = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
-];
 
 function fmtDateFull(iso: string): string {
   const d = new Date(iso);
@@ -79,8 +104,48 @@ const I_CHEVRON = '<path d="M9 6l6 6-6 6"/>';
 const I_PLAY = '<circle cx="12" cy="12" r="8.5"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/>';
 const I_LINE_DASH = '<path d="M3 12h4M10 12h4M17 12h4"/>';
 const I_LINE = '<path d="M3 12h18"/>';
+const I_CLOCK = '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>';
+const I_LOCK = '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>';
+const I_FOLDER = '<path d="M4 6.5A1.5 1.5 0 0 1 5.5 5H10l2 2h6.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/>';
+const I_PLUS = '<path d="M12 5v14M5 12h14"/>';
 
-function renderHeader(p: StudentProfile): HTMLElement {
+// --- Переключатель статуса (предпросмотр) ---
+
+function renderStatusBar(current: CardStatus, onChange: (s: CardStatus) => void): HTMLElement {
+  const bar = el('div', 'pf-statusbar');
+  const col = el('div', 'pf-col');
+  col.appendChild(el('span', 'pf-meta', 'Статус карты'));
+  const group = el('div', 'pf-segment');
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-label', 'Статус карты');
+  for (const s of STATUSES) {
+    const btn = el('button', 'pf-segment__btn', STATUS_LABEL[s]);
+    btn.type = 'button';
+    btn.setAttribute('aria-pressed', String(s === current));
+    btn.addEventListener('click', () => { if (s !== current) onChange(s); });
+    group.appendChild(btn);
+  }
+  col.appendChild(group);
+  bar.appendChild(col);
+  return bar;
+}
+
+// --- Шапка ---
+
+function renderStatusBadge(p: StudentProfile, status: CardStatus): HTMLElement {
+  const badge = el('span', `pf-status pf-status--${status}`);
+  if (status === 'active') {
+    badge.innerHTML = `${icon(I_CHECK)}<span>Активна</span>`;
+  } else if (status === 'diagnostic') {
+    const until = p.cardValidUntil ? ` до ${fmtDate(p.cardValidUntil)}` : '';
+    badge.innerHTML = `${icon(I_CLOCK)}<span>Активна${until}</span>`;
+  } else {
+    badge.innerHTML = `${icon(I_LOCK)}<span>Не активна</span>`;
+  }
+  return badge;
+}
+
+function renderHeader(p: StudentProfile, status: CardStatus): HTMLElement {
   const header = el('header', 'pf-header');
   const col = el('div', 'pf-col');
 
@@ -96,13 +161,53 @@ function renderHeader(p: StudentProfile): HTMLElement {
   head.appendChild(el('h1', 'pf-name', p.fullName));
   col.appendChild(head);
 
-  const badge = el('p', 'pf-card-badge');
-  badge.innerHTML = `${icon(I_CARD)}<span>Карта <bdi>№ ${p.card}</bdi></span>`;
-  col.appendChild(badge);
+  const badges = el('div', 'pf-header__badges');
+  const card = el('p', 'pf-card-badge');
+  card.innerHTML = `${icon(I_CARD)}<span>Карта <bdi>№ ${p.card}</bdi></span>`;
+  badges.appendChild(card);
+  badges.appendChild(renderStatusBadge(p, status));
+  col.appendChild(badges);
 
   header.appendChild(col);
   return header;
 }
+
+function enrollLink(): HTMLAnchorElement {
+  const a = document.createElement('a');
+  a.className = 'pf-action';
+  a.href = ENROLL_URL;
+  a.textContent = 'Записаться на курс';
+  return a;
+}
+
+// --- Состояния карты ---
+
+/** После диагностики: карта активна до даты, одно действие — записаться. */
+function renderNotice(p: StudentProfile): HTMLElement {
+  const box = el('div', 'pf-notice');
+  box.setAttribute('role', 'status');
+  const until = p.cardValidUntil ? ` до ${fmtDateFull(p.cardValidUntil)}` : '';
+  box.innerHTML =
+    `${icon(I_CLOCK)}<div class="pf-notice__body">` +
+    `<p class="pf-notice__title">Карта активна${until}</p>` +
+    `<p>Запишитесь на курс, чтобы сохранить профиль и смотреть, как растут навыки.</p></div>`;
+  box.querySelector('.pf-notice__body')!.appendChild(enrollLink());
+  return box;
+}
+
+/** Карта закрыта: имя остаётся в шапке, остальное скрыто. */
+function renderLocked(): HTMLElement {
+  const sec = el('section', 'pf-section pf-locked');
+  const ic = el('span', 'pf-locked__icon');
+  ic.innerHTML = icon(I_LOCK, 1.5);
+  sec.appendChild(ic);
+  sec.appendChild(el('h2', 'pf-h2', 'Карта не активна'));
+  sec.appendChild(el('p', 'pf-text pf-text--soft', 'Архетип, навыки и сертификаты откроются после записи на курс.'));
+  sec.appendChild(enrollLink());
+  return sec;
+}
+
+// --- Архетип ---
 
 function renderArchetype(p: StudentProfile): HTMLElement {
   const sec = el('section', 'pf-section');
@@ -142,27 +247,28 @@ function renderArchetype(p: StudentProfile): HTMLElement {
   return sec;
 }
 
-function renderSkills(p: StudentProfile): HTMLElement {
+// --- Навыки ---
+
+function renderSkills(skills: SkillScores, baseline?: { date: string; skills: SkillScores }): HTMLElement {
   const sec = el('section', 'pf-section');
   sec.appendChild(el('h2', 'pf-h2', 'Навыки'));
-  const base = p.baseline;
-  const radar = renderRadar(base ? base.skills : p.skills, base ? p.skills : undefined);
+  const radar = renderRadar(baseline ? baseline.skills : skills, baseline ? skills : undefined);
   // Подписи осей крупнее (text-sm), поэтому поле обзора шире, чтобы край не резал текст.
   radar.setAttribute('viewBox', '-72 -6 464 300');
   sec.appendChild(radar);
 
-  if (base) {
+  if (baseline) {
     const legend = el('p', 'pf-legend');
     legend.innerHTML =
-      `<span class="pf-lg--base">${icon(I_LINE_DASH)}<span>Диагностика · ${fmtDate(base.date)}</span></span>` +
+      `<span class="pf-lg--base">${icon(I_LINE_DASH)}<span>Диагностика · ${fmtDate(baseline.date)}</span></span>` +
       `<span class="pf-lg--now">${icon(I_LINE)}<span>Сейчас</span></span>`;
     sec.appendChild(legend);
   }
 
   const rows = el('ul', 'pf-skills');
   for (const m of SKILL_META) {
-    const now = p.skills[m.key];
-    const was = base?.skills[m.key];
+    const now = skills[m.key];
+    const was = baseline?.skills[m.key];
     const delta = was !== undefined ? now - was : 0;
     const row = el('li', 'pf-skill');
     row.innerHTML =
@@ -177,6 +283,8 @@ function renderSkills(p: StudentProfile): HTMLElement {
   sec.appendChild(rows);
   return sec;
 }
+
+// --- Курсы и сертификаты ---
 
 /** Превью сертификата: документ с логотипом, именем, курсом, датой и номером. Целиком — ссылка на проверку. */
 function renderCertificate(c: CourseRecord, student: StudentProfile): HTMLElement {
@@ -230,12 +338,12 @@ function renderCourse(c: CourseRecord, student: StudentProfile): HTMLElement {
   return row;
 }
 
-function certWord(n: number): string {
+function plural(n: number, one: string, few: string, many: string): string {
   const m10 = n % 10;
   const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return 'сертификат';
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'сертификата';
-  return 'сертификатов';
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
 }
 
 function renderCourses(p: StudentProfile): HTMLElement {
@@ -243,7 +351,9 @@ function renderCourses(p: StudentProfile): HTMLElement {
   const head = el('div', 'pf-section__head');
   head.appendChild(el('h2', 'pf-h2', 'Курсы'));
   const certs = p.courses.filter((c) => c.certificate).length;
-  if (certs > 0) head.appendChild(el('span', 'pf-meta', `${certs} ${certWord(certs)}`));
+  if (certs > 0) {
+    head.appendChild(el('span', 'pf-meta', `${certs} ${plural(certs, 'сертификат', 'сертификата', 'сертификатов')}`));
+  }
   sec.appendChild(head);
 
   if (p.courses.length === 0) {
@@ -257,14 +367,157 @@ function renderCourses(p: StudentProfile): HTMLElement {
   return sec;
 }
 
-function renderProfile(p: StudentProfile): void {
+// --- Мои проекты ---
+
+function renderProject(pr: ProjectRecord): HTMLElement {
+  const row = el('li', 'pf-project');
+  const tile = el('div', 'pf-project__tile');
+  tile.innerHTML = icon(I_FOLDER, 1.5);
+  row.appendChild(tile);
+
+  const main = el('div', 'pf-project__main');
+  main.appendChild(el('p', 'pf-project__title', pr.title));
+  const meta = [pr.courseTitle, fmtDate(pr.date)].filter(Boolean).join(' · ');
+  main.appendChild(el('p', 'pf-meta', meta));
+  row.appendChild(main);
+
+  const open = document.createElement('a');
+  open.className = 'pf-project__open';
+  open.href = pr.url;
+  open.target = '_blank';
+  open.rel = 'noopener';
+  open.setAttribute('aria-label', `Открыть проект «${pr.title}»`);
+  open.innerHTML = `Открыть${icon(I_CHEVRON)}`;
+  row.appendChild(open);
+  return row;
+}
+
+function field(id: string, label: string, type: 'text' | 'url', placeholder: string): HTMLElement {
+  const wrap = el('div', 'pf-field');
+  const lab = el('label', 'pf-field__label', label);
+  lab.htmlFor = id;
+  const input = el('input', 'pf-input');
+  input.id = id;
+  input.name = id;
+  input.type = type;
+  input.placeholder = placeholder;
+  input.autocomplete = 'off';
+  input.setAttribute('aria-describedby', `${id}-error`);
+  const err = el('p', 'pf-field__error');
+  err.id = `${id}-error`;
+  err.setAttribute('aria-live', 'polite');
+  wrap.append(lab, input, err);
+  return wrap;
+}
+
+function setFieldError(wrap: HTMLElement, message: string): void {
+  wrap.classList.toggle('pf-field--error', message !== '');
+  wrap.querySelector('.pf-field__error')!.textContent = message;
+}
+
+function renderProjects(p: StudentProfile, onSaved: () => void): HTMLElement {
+  const sec = el('section', 'pf-section');
+  const projects = [...p.projects, ...loadLocalProjects(p.card)]
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const head = el('div', 'pf-section__head');
+  head.appendChild(el('h2', 'pf-h2', 'Мои проекты'));
+  if (projects.length > 0) {
+    head.appendChild(el('span', 'pf-meta', `${projects.length} ${plural(projects.length, 'проект', 'проекта', 'проектов')}`));
+  }
+  sec.appendChild(head);
+
+  if (projects.length === 0) {
+    sec.appendChild(el('p', 'pf-text pf-text--soft', 'Проектов пока нет. Добавьте первый по ссылке на Scratch, GitHub или видео.'));
+  } else {
+    const list = el('ul', 'pf-projects');
+    for (const pr of projects) list.appendChild(renderProject(pr));
+    sec.appendChild(list);
+  }
+
+  // Одно действие на экране: «Добавить проект». Пока форма открыта, кнопка скрыта.
+  const addBtn = el('button', 'pf-action');
+  addBtn.type = 'button';
+  addBtn.innerHTML = `${icon(I_PLUS)}Добавить проект`;
+  sec.appendChild(addBtn);
+
+  const form = el('form', 'pf-form');
+  form.hidden = true;
+  form.noValidate = true;
+  form.setAttribute('aria-label', 'Новый проект');
+  const titleField = field('project-title', 'Название', 'text', 'Например, Лабиринт для кота');
+  const urlField = field('project-url', 'Ссылка на проект', 'url', 'https://scratch.mit.edu/projects/…');
+  const actions = el('div', 'pf-form__actions');
+  const save = el('button', 'pf-action', 'Сохранить');
+  save.type = 'submit';
+  const cancel = el('button', 'pf-action pf-action--secondary', 'Отмена');
+  cancel.type = 'button';
+  actions.append(save, cancel);
+  form.append(titleField, urlField, actions);
+  sec.appendChild(form);
+
+  const openForm = (): void => {
+    addBtn.hidden = true;
+    form.hidden = false;
+    titleField.querySelector('input')!.focus();
+  };
+  const closeForm = (): void => {
+    form.hidden = true;
+    addBtn.hidden = false;
+    form.reset();
+    setFieldError(titleField, '');
+    setFieldError(urlField, '');
+    addBtn.focus();
+  };
+  addBtn.addEventListener('click', openForm);
+  cancel.addEventListener('click', closeForm);
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = titleField.querySelector('input')!.value.trim();
+    const url = urlField.querySelector('input')!.value.trim();
+    let ok = true;
+    if (!title) { setFieldError(titleField, 'Введите название проекта.'); ok = false; }
+    else setFieldError(titleField, '');
+    if (!/^https?:\/\/\S+$/.test(url)) { setFieldError(urlField, 'Нужна ссылка, которая начинается с https://'); ok = false; }
+    else setFieldError(urlField, '');
+    if (!ok) return;
+    saveLocalProject(p.card, {
+      id: `local-${Date.now()}`,
+      title,
+      url,
+      date: new Date().toISOString().slice(0, 10),
+    });
+    onSaved();
+  });
+
+  return sec;
+}
+
+// --- Экран ---
+
+function renderProfile(p: StudentProfile, status: CardStatus): void {
   app.innerHTML = '';
-  app.appendChild(renderHeader(p));
+  app.appendChild(renderStatusBar(status, (next) => {
+    writeStatus(next);
+    renderProfile(p, next);
+  }));
+  app.appendChild(renderHeader(p, status));
+
   const main = el('main', 'pf-main');
   const col = el('div', 'pf-col');
-  col.appendChild(renderArchetype(p));
-  col.appendChild(renderSkills(p));
-  col.appendChild(renderCourses(p));
+  if (status === 'locked') {
+    col.appendChild(renderLocked());
+  } else if (status === 'diagnostic') {
+    // Есть только первый замер: показываем его без роста, курсов и проектов ещё нет.
+    col.appendChild(renderNotice(p));
+    col.appendChild(renderArchetype(p));
+    col.appendChild(renderSkills(p.baseline?.skills ?? p.skills));
+  } else {
+    col.appendChild(renderArchetype(p));
+    col.appendChild(renderSkills(p.skills, p.baseline));
+    col.appendChild(renderCourses(p));
+    col.appendChild(renderProjects(p, () => renderProfile(p, status)));
+  }
   main.appendChild(col);
   app.appendChild(main);
 }
@@ -296,7 +549,7 @@ async function boot(): Promise<void> {
   const card = new URLSearchParams(location.search).get('card');
   renderLoading();
   const profile = await loadProfile(card);
-  if (profile) renderProfile(profile);
+  if (profile) renderProfile(profile, readStatus(profile));
   else renderEmpty();
 }
 

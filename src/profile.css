@@ -22,6 +22,7 @@
 html:not([data-theme="dark"]) { --color-page: var(--color-surface); }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; } /* атрибут hidden сильнее display у компонентов */
 
 html {
   -webkit-font-smoothing: antialiased;
@@ -314,6 +315,123 @@ h1, h2 { margin: 0; text-wrap: balance; font-weight: var(--font-weight-bold); }
 }
 @keyframes pf-spin { to { transform: rotate(360deg); } }
 
+/* --- Переключатель статуса (предпросмотр): нейтральные контролы, выбранный — action-soft + action (tokens.md) --- */
+.pf-statusbar { border-block-end: 1px solid var(--color-line); }
+.pf-statusbar .pf-col { display: flex; flex-direction: column; gap: var(--s1); padding-block: var(--s2); }
+.pf-segment { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.pf-segment__btn {
+  min-block-size: var(--control);
+  padding-inline: var(--s3);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit; font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition-property: transform, background-color, border-color, color;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-out);
+}
+.pf-segment__btn:active { transform: scale(0.96); }
+.pf-segment__btn[aria-pressed="true"] {
+  background: var(--color-action-soft);
+  border-color: var(--color-action);
+  color: var(--color-action);
+}
+
+/* Статус карты в шапке: статус — мягкая заливка и свой цвет текста, без рамки (tokens.md) */
+.pf-header__badges { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.pf-status {
+  display: inline-flex; align-items: center; gap: var(--s1);
+  padding: var(--s1) var(--s2);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-sm); line-height: var(--text-sm--line-height);
+  font-weight: var(--font-weight-semibold);
+}
+.pf-status svg { inline-size: var(--size-5); block-size: var(--size-5); }
+.pf-status--active { background: var(--progress); color: var(--on-progress); }
+.pf-status--diagnostic { background: var(--color-warning-soft); color: var(--color-warning-ink); }
+.pf-status--locked { background: var(--color-error-soft); color: var(--color-error-ink); }
+
+/* Уведомление после диагностики: срок карты и одно действие */
+.pf-notice {
+  display: flex; gap: var(--s3); align-items: flex-start;
+  padding: var(--s4);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-soft);
+  color: var(--color-warning-ink);
+}
+.pf-notice > svg { flex: none; inline-size: var(--size-6); block-size: var(--size-6); margin-block-start: calc((1lh - var(--size-6)) / 2); }
+.pf-notice__body { display: flex; flex-direction: column; gap: var(--s2); min-inline-size: 0; }
+.pf-notice__title { font-weight: var(--font-weight-semibold); }
+.pf-notice .pf-action { align-self: flex-start; margin-block-start: var(--s2); }
+
+/* Закрытая карта: имя остаётся, остальное скрыто */
+.pf-locked { align-items: flex-start; }
+.pf-locked__icon {
+  display: grid; place-items: center;
+  inline-size: var(--control); block-size: var(--control);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-inset);
+  color: var(--color-ink-soft);
+}
+.pf-locked__icon svg { inline-size: var(--size-6); block-size: var(--size-6); }
+[data-theme="dark"] .pf-locked__icon { background: var(--color-surface); }
+
+/* --- Мои проекты --- */
+.pf-projects { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pf-project {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
+  padding-block: var(--s3);
+  border-block-start: 1px solid var(--color-line);
+}
+.pf-project:first-child { border-block-start: none; padding-block-start: 0; }
+.pf-project:last-child { padding-block-end: 0; }
+.pf-project__tile {
+  display: grid; place-items: center;
+  inline-size: var(--control); block-size: var(--control);
+  border-radius: var(--radius-md);
+  background: var(--color-action-soft);
+  color: var(--color-action);
+}
+.pf-project__tile svg { inline-size: var(--size-6); block-size: var(--size-6); }
+.pf-project__main { display: flex; flex-direction: column; gap: var(--s1); flex: 1 1 calc(var(--spacing) * 30); min-inline-size: 0; }
+.pf-project__title { font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
+.pf-project__open {
+  display: inline-flex; align-items: center; gap: var(--s1);
+  margin-inline-start: auto;
+  min-block-size: var(--control);
+  color: var(--color-action); font-weight: var(--font-weight-semibold);
+  text-decoration: none; white-space: nowrap;
+}
+.pf-project__open svg { inline-size: var(--size-5); block-size: var(--size-5); }
+[dir="rtl"] .pf-project__open svg { transform: scaleX(-1); }
+.pf-action--secondary { background: var(--color-action-soft); color: var(--color-action); }
+.pf-action svg { inline-size: var(--size-5); block-size: var(--size-5); margin-inline-end: var(--s1); }
+.pf-section > .pf-action { align-self: flex-start; }
+
+/* Форма добавления проекта: поле — surface-inset с рамкой line-strong, ошибка рядом с полем (rules.md, п. 8) */
+.pf-form { display: flex; flex-direction: column; gap: var(--s4); }
+.pf-field { display: flex; flex-direction: column; gap: var(--s1); }
+.pf-field__label { font-weight: var(--font-weight-semibold); }
+.pf-input {
+  min-block-size: var(--control);
+  padding-inline: var(--s3);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-inset);
+  color: var(--color-ink);
+  font: inherit; font-size: var(--text-base);
+}
+.pf-input::placeholder { color: var(--color-ink-soft); }
+[data-theme="dark"] .pf-input { background: var(--color-surface); }
+.pf-field--error .pf-input { border-color: var(--color-error-ink); }
+.pf-field__error { color: var(--color-error-ink); font-size: var(--text-sm); line-height: var(--text-sm--line-height); }
+.pf-field__error:empty { display: none; }
+.pf-form__actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.pf-form[hidden] { display: none; }
+
 /* --- Фокус: 2 px focus с отступом 2 px; на brand двойное кольцо (tokens.md) --- */
 :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .pf-header :focus-visible {
@@ -324,6 +442,7 @@ h1, h2 { margin: 0; text-wrap: balance; font-weight: var(--font-weight-bold); }
 /* --- Наведение только для мыши; у action-элементов цвета наведения нет (tokens.md) --- */
 @media (hover: hover) {
   .pf-logo:hover { opacity: var(--opacity-secondary); }
+  .pf-segment__btn:not([aria-pressed="true"]):hover { background: var(--color-surface-inset); }
 }
 
 /* --- Движение: один постановочный вход на экран, duration-slow, ease-out (motion.md) --- */
@@ -335,5 +454,5 @@ h1, h2 { margin: 0; text-wrap: balance; font-weight: var(--font-weight-bold); }
 @media (prefers-reduced-motion: reduce) {
   @keyframes pf-enter { from { opacity: 0; } to { opacity: 1; } }
   .pf-spinner { animation: none; }
-  .pf-certificate:active, .pf-action:active { transform: none; opacity: var(--opacity-secondary); }
+  .pf-certificate:active, .pf-action:active, .pf-segment__btn:active { transform: none; opacity: var(--opacity-secondary); }
 }
