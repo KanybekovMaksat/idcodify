@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Лабиринт для кота: игра на Scratch, кот ищет путь к флажку">
+  <rect width="800" height="450" fill="#e9eefc"/>
+  <!-- сцена Scratch -->
+  <rect x="60" y="30" width="680" height="390" rx="20" fill="#ffffff" stroke="#0a1028" stroke-width="4"/>
+  <!-- стены лабиринта -->
+  <g fill="none" stroke="#246fff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M160 100 H520"/>
+    <path d="M160 100 V330"/>
+    <path d="M160 330 H330"/>
+    <path d="M250 180 H420 V260"/>
+    <path d="M520 100 V200 H640"/>
+    <path d="M330 330 V250"/>
+    <path d="M420 330 H640 V280"/>
+    <path d="M520 280 V200"/>
+  </g>
+  <!-- флажок -->
+  <g transform="translate(590 230)">
+    <rect x="-3" y="0" width="6" height="60" rx="3" fill="#0a1028"/>
+    <path d="M3 2 h44 l-12 16 12 16 h-44z" fill="#c7e85a" stroke="#0a1028" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <!-- следы -->
+  <g fill="#c7e85a" opacity="0.9">
+    <circle cx="300" cy="140" r="6"/><circle cx="340" cy="140" r="6"/><circle cx="380" cy="140" r="6"/>
+    <circle cx="470" cy="140" r="6"/><circle cx="470" cy="180" r="6"/><circle cx="470" cy="220" r="6"/>
+  </g>
+  <!-- кот -->
+  <g transform="translate(205 125)">
+    <ellipse cx="34" cy="52" rx="34" ry="22" fill="#f59e0b" stroke="#0a1028" stroke-width="4"/>
+    <circle cx="20" cy="30" r="24" fill="#f59e0b" stroke="#0a1028" stroke-width="4"/>
+    <path d="M2 14 l4 -20 14 12z M38 14 l-4 -20 -14 12z" fill="#f59e0b" stroke="#0a1028" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="12" cy="28" r="6" fill="#ffffff" stroke="#0a1028" stroke-width="3"/>
+    <circle cx="28" cy="28" r="6" fill="#ffffff" stroke="#0a1028" stroke-width="3"/>
+    <circle cx="13" cy="29" r="2.5" fill="#0a1028"/><circle cx="29" cy="29" r="2.5" fill="#0a1028"/>
+    <path d="M14 40 q6 5 12 0" fill="none" stroke="#0a1028" stroke-width="3" stroke-linecap="round"/>
+    <path d="M66 46 q24 -20 18 -44" fill="none" stroke="#0a1028" stroke-width="10" stroke-linecap="round"/>
+    <path d="M66 46 q24 -20 18 -44" fill="none" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <!-- блок Scratch внизу -->
+  <g transform="translate(90 350)">
+    <rect x="0" y="0" width="230" height="44" rx="10" fill="#4c97ff" stroke="#0a1028" stroke-width="4"/>
+    <rect x="16" y="12" width="110" height="20" rx="10" fill="#ffffff" opacity="0.9"/>
+    <rect x="140" y="12" width="70" height="20" rx="6" fill="#ffffff" opacity="0.9"/>
+  </g>
+  <g transform="translate(330 350)">
+    <rect x="0" y="0" width="190" height="44" rx="10" fill="#ffab19" stroke="#0a1028" stroke-width="4"/>
+    <rect x="16" y="12" width="150" height="20" rx="10" fill="#ffffff" opacity="0.9"/>
+  </g>
+</svg>

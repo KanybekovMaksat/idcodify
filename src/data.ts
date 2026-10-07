@@ -109,12 +109,12 @@ const DEMO: StudentProfile = {
   ],
   projects: [
     {
-      id: 'robo-sorter',
-      title: 'Робот-сортировщик',
+      id: 'cat-maze',
+      title: 'Лабиринт для кота',
       courseTitle: 'Robo Start',
       date: '2026-03-28',
-      url: 'https://github.com/codify-students/robo-sorter',
-      preview: '/projects/robo-sorter.svg',
+      url: 'https://scratch.mit.edu/projects/1084402391',
+      preview: '/projects/scratch-maze.svg',
     },
     {
       id: 'homework-bot',
